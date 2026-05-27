@@ -7,8 +7,8 @@ const config = {
 
     type: Phaser.AUTO,
 
-    width: 180,
-    height: 320,
+    width: 360,
+    height: 640,
 
     backgroundColor: "#f5ebd8",
 
@@ -19,6 +19,12 @@ const config = {
         create,
         update
     }
+    scale: {
+
+    mode: Phaser.Scale.FIT,
+
+    autoCenter: Phaser.Scale.CENTER_BOTH
+},
 };
 
 new Phaser.Game(config);
@@ -74,37 +80,37 @@ function preload() {
 
     this.load.image(
         "sumikichi1",
-        " sumikichi_1.png"
+        "sumikichi_1.png"
     );
 
     this.load.image(
         "sumikichi2",
-        " sumikichi_2.png"
+        "sumikichi_2.png"
     );
 
     this.load.image(
         "cactus",
-        " cactus.png"
+        "cactus.png"
     );
 
     this.load.image(
         "rock",
-        " rock.png"
+        "rock.png"
     );
 
     this.load.image(
         "drone",
-        " drone.png"
+        "drone.png"
     );
 
     this.load.image(
         "feather",
-        " feather.png"
+        "feather.png"
     );
 
     this.load.image(
         "guide",
-        " guide.png"
+        "guide.png"
     );
 }
 
@@ -304,7 +310,7 @@ function create() {
         30,
         90,
 
-        "BEST : " + bestScore,
+        "BEST : "+ bestScore,
 
         {
             fontSize: "36px",
@@ -660,11 +666,11 @@ function update(time, delta) {
     score += 0.05;
 
     scoreText.setText(
-        "SCORE : " + Math.floor(score)
+        "SCORE : "+ Math.floor(score)
     );
 
     bestText.setText(
-        "BEST : " + bestScore
+        "BEST : "+ bestScore
     );
 }
 
@@ -766,7 +772,7 @@ function showCombo(scene){
         240,
         260,
 
-        "COMBO x" + combo,
+        "COMBO x"+ combo,
 
         {
             fontSize: "42px",
