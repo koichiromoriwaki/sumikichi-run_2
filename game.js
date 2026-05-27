@@ -1,26 +1,15 @@
-// ===============================
-// SUMIKICHI RUN WEB
-// 軽量化版 game.js
-// ===============================
-
 const config = {
 
-    type: Phaser.WEBGL,
+    type: Phaser.CANVAS,
 
     width: 360,
     height: 640,
 
     backgroundColor: "#f5ebd8",
 
-    fps: {
-        target: 30,
-        forceSetTimeOut: true
-    },
-
     scale: {
 
         mode: Phaser.Scale.FIT,
-
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
 
@@ -33,111 +22,64 @@ const config = {
 
 new Phaser.Game(config);
 
-// ===============================
+// =====================
 // グローバル
-// ===============================
+// =====================
 
 let player;
-let playerFrames = [];
 
-let currentFrame = 0;
+let velocityY = 0;
 
-let playerVelocityY = 0;
-
-let gravity = 0.20;
+let gravity = 0.22;
 
 let jumpCount = 0;
 
 let groundY = 560;
 
 let obstacles = [];
-let feathers = [];
 
 let score = 0;
-let bestScore = 0;
 
-let gameStarted = false;
-let gameOver = false;
+let bestScore = 0;
 
 let scoreText;
 let bestText;
 
-let lastScore = -1;
-
-let titleTexts = [];
-
-let guideImage;
-
-let animationTimer = 0;
+let gameStarted = false;
+let gameOver = false;
 
 let isNight = false;
 
-// ===============================
+// =====================
 // preload
-// ===============================
+// =====================
 
 function preload() {
 
-    // 先頭スペース絶対禁止
+    this.load.image("sumikichi", "sumikichi_1.png");
 
-    this.load.image(
-        "sumikichi1",
-        "sumikichi_1.png"
-    );
+    this.load.image("cactus", "cactus.png");
 
-    this.load.image(
-        "sumikichi2",
-        "sumikichi_2.png"
-    );
-
-    this.load.image(
-        "cactus",
-        "cactus.png"
-    );
-
-    this.load.image(
-        "rock",
-        "rock.png"
-    );
-
-    this.load.image(
-        "drone",
-        "drone.png"
-    );
-
-    this.load.image(
-        "feather",
-        "feather.png"
-    );
-
-    this.load.image(
-        "guide",
-        "guide.png"
-    );
+    this.load.image("guide", "guide.png");
 }
 
-// ===============================
+// =====================
 // create
-// ===============================
+// =====================
 
 function create() {
 
-    // ===========================
-    // BEST SCORE
-    // ===========================
+    // ベストスコア
 
-    const saved = localStorage.getItem(
-        "sumikichi_best"
-    );
+    const saved =
+        localStorage.getItem("sumikichi_best");
 
     if(saved){
 
         bestScore = parseInt(saved);
     }
 
-    // ===========================
     // 背景
-    // ===========================
 
     this.sky = this.add.rectangle(
         180,
@@ -147,157 +89,81 @@ function create() {
         0xf5ebd8
     );
 
-    // ===========================
     // 月
-    // ===========================
 
     this.moon = this.add.circle(
         300,
-        100,
+        120,
         30,
         0xfff0aa
     );
 
     this.moon.visible = false;
 
-    // ===========================
-    // 雲
-    // ===========================
-
-    this.clouds = [];
-
-    for(let i = 0; i < 2; i++){
-
-        let cloud = this.add.ellipse(
-            120 + i * 180,
-            100 + i * 20,
-            90,
-            45,
-            0xffffff
-        );
-
-        this.clouds.push(cloud);
-    }
-
-    // ===========================
     // 地面
-    // ===========================
 
     this.ground = this.add.rectangle(
         180,
         610,
         360,
-        80,
+        60,
         0x7a4f28
     );
 
-    // ===========================
-    // 地面ライン
-    // ===========================
-
-    this.groundLines = [];
-
-    for(let i = 0; i < 8; i++){
-
-        let line = this.add.rectangle(
-
-            i * 50,
-            585,
-
-            20,
-            4,
-
-            0x503010
-        );
-
-        this.groundLines.push(line);
-    }
-
-    // ===========================
-    // ガイド
-    // ===========================
-
-    guideImage = this.add.image(
-        180,
-        360,
-        "guide"
-    );
-
-    guideImage.displayWidth = 220;
-    guideImage.displayHeight = 220;
-
-    // ===========================
     // タイトル
-    // ===========================
 
-    let title = this.add.text(
+    this.title = this.add.text(
 
-        30,
-        30,
+        40,
+        70,
 
         "すみきち\nぱたぱたラン！",
 
         {
-            fontSize: "28px",
+            fontSize: "34px",
             color: "#222",
             align: "center"
         }
     );
 
-    let startText = this.add.text(
+    this.startText = this.add.text(
 
-        70,
-        170,
+        60,
+        180,
 
         "タップしてスタート！",
 
         {
-            fontSize: "24px",
+            fontSize: "28px",
             color: "#222"
         }
     );
 
-    titleTexts.push(title);
-    titleTexts.push(startText);
+    // ガイド
 
-    // ===========================
+    this.guide = this.add.image(
+        180,
+        360,
+        "guide"
+    );
+
+    this.guide.setScale(0.35);
+
     // プレイヤー
-    // ===========================
 
-    playerFrames = [
+    player = this.add.image(
+        80,
+        groundY,
+        "sumikichi"
+    );
 
-        this.add.image(
-            70,
-            groundY - 20,
-            "sumikichi1"
-        ),
+    player.setScale(0.22);
 
-        this.add.image(
-            70,
-            groundY - 20,
-            "sumikichi2"
-        )
-    ];
-
-    playerFrames.forEach(frame => {
-
-        frame.displayWidth = 70;
-        frame.displayHeight = 70;
-
-        frame.visible = false;
-    });
-
-    player = playerFrames[0];
-
-    player.visible = true;
-
-    // ===========================
     // SCORE
-    // ===========================
 
     scoreText = this.add.text(
 
-        10,
+        12,
         10,
 
         "SCORE : 0",
@@ -310,7 +176,7 @@ function create() {
 
     bestText = this.add.text(
 
-        10,
+        12,
         40,
 
         "BEST : " + bestScore,
@@ -324,73 +190,49 @@ function create() {
     scoreText.visible = false;
     bestText.visible = false;
 
-    // ===========================
     // タップ
-    // ===========================
 
-    this.input.on(
+    this.input.on("pointerdown", () => {
 
-        "pointerdown",
+        // START
 
-        () => {
+        if(!gameStarted){
 
-            // START
+            gameStarted = true;
 
-            if(!gameStarted){
+            this.title.visible = false;
+            this.startText.visible = false;
+            this.guide.visible = false;
 
-                gameStarted = true;
+            scoreText.visible = true;
+            bestText.visible = true;
 
-                guideImage.visible = false;
-
-                titleTexts.forEach(t => {
-                    t.visible = false;
-                });
-
-                scoreText.visible = true;
-                bestText.visible = true;
-
-                return;
-            }
-
-            // RETRY
-
-            if(gameOver){
-
-                location.reload();
-                return;
-            }
-
-            // JUMP
-
-            if(jumpCount < 3){
-
-                if(jumpCount === 0){
-
-                    playerVelocityY = -9;
-                }
-
-                else if(jumpCount === 1){
-
-                    playerVelocityY = -11;
-                }
-
-                else{
-
-                    playerVelocityY = -9;
-                }
-
-                jumpCount++;
-            }
+            return;
         }
-    );
 
-    // ===========================
+        // RETRY
+
+        if(gameOver){
+
+            location.reload();
+            return;
+        }
+
+        // JUMP
+
+        if(jumpCount < 2){
+
+            velocityY = -8.5;
+
+            jumpCount++;
+        }
+    });
+
     // 障害物生成
-    // ===========================
 
     this.time.addEvent({
 
-        delay: 2800,
+        delay: 2200,
 
         loop: true,
 
@@ -403,43 +245,21 @@ function create() {
             spawnObstacle(this);
         }
     });
-
-    // ===========================
-    // 羽生成
-    // ===========================
-
-    this.time.addEvent({
-
-        delay: 4000,
-
-        loop: true,
-
-        callback: () => {
-
-            if(!gameStarted || gameOver){
-                return;
-            }
-
-            spawnFeather(this);
-        }
-    });
 }
 
-// ===============================
+// =====================
 // update
-// ===============================
+// =====================
 
-function update(time, delta) {
+function update() {
 
     if(!gameStarted || gameOver){
         return;
     }
 
-    // ===========================
-    // 昼夜
-    // ===========================
+    // 昼夜切替
 
-    if(Math.floor(score / 1000) % 2 === 0){
+    if(Math.floor(score / 800) % 2 === 0){
 
         isNight = false;
 
@@ -450,7 +270,6 @@ function update(time, delta) {
         scoreText.setColor("#222");
         bestText.setColor("#222");
     }
-
     else{
 
         isNight = true;
@@ -459,101 +278,45 @@ function update(time, delta) {
 
         this.moon.visible = true;
 
-        scoreText.setColor("#ffffff");
-        bestText.setColor("#ffffff");
+        scoreText.setColor("#fff");
+        bestText.setColor("#fff");
     }
 
-    // ===========================
     // スピード
-    // ===========================
 
-    let obstacleSpeed =
-        2 + score * 0.0003;
+    let speed = 2.8;
 
-    // ===========================
-    // 雲
-    // ===========================
-
-    this.clouds.forEach(cloud => {
-
-        cloud.x -= obstacleSpeed * 0.1;
-
-        if(cloud.x < -60){
-
-            cloud.x = 420;
-        }
-    });
-
-    // ===========================
-    // 地面ライン
-    // ===========================
-
-    this.groundLines.forEach(line => {
-
-        line.x -= obstacleSpeed * 1.5;
-
-        if(line.x < -20){
-
-            line.x = 400;
-        }
-    });
-
-    // ===========================
     // 重力
-    // ===========================
 
-    playerVelocityY += gravity;
+    velocityY += gravity;
 
-    player.y += playerVelocityY;
+    player.y += velocityY;
 
-    if(player.y >= groundY - 20){
+    if(player.y >= groundY){
 
-        player.y = groundY - 20;
+        player.y = groundY;
 
-        playerVelocityY = 0;
+        velocityY = 0;
 
         jumpCount = 0;
     }
 
-    // ===========================
-    // パタパタ
-    // ===========================
-
-    animationTimer += delta;
-
-    if(animationTimer > 180){
-
-        player.visible = false;
-
-        currentFrame++;
-
-        if(currentFrame >= playerFrames.length){
-
-            currentFrame = 0;
-        }
-
-        player = playerFrames[currentFrame];
-
-        player.visible = true;
-
-        animationTimer = 0;
-    }
-
-    playerFrames.forEach(frame => {
-
-        frame.x = 70;
-        frame.y = player.y;
-    });
-
-    // ===========================
     // 障害物
-    // ===========================
 
     obstacles.forEach(obstacle => {
 
-        obstacle.x -= obstacleSpeed;
+        obstacle.x -= speed;
 
-        // 当たり判定
+        // スコア
+
+        if(!obstacle.passed && obstacle.x < 80){
+
+            obstacle.passed = true;
+
+            score += 100;
+        }
+
+        // 当たり
 
         if(
 
@@ -568,7 +331,7 @@ function update(time, delta) {
 
             if(score > bestScore){
 
-                bestScore = Math.floor(score);
+                bestScore = score;
 
                 localStorage.setItem(
                     "sumikichi_best",
@@ -578,185 +341,67 @@ function update(time, delta) {
 
             this.add.text(
 
-                60,
+                40,
                 260,
 
                 "GAME OVER",
 
                 {
-                    fontSize: "32px",
+                    fontSize: "42px",
                     color: "#ff0000"
                 }
             );
 
             this.add.text(
 
-                70,
+                60,
                 320,
 
                 "TAP TO RETRY",
 
                 {
-                    fontSize: "22px",
+                    fontSize: "26px",
                     color: "#ffffff"
                 }
             );
         }
-    });
 
-    // 画面外削除
-
-    obstacles = obstacles.filter(obstacle => {
+        // 画面外削除
 
         if(obstacle.x < -100){
 
             obstacle.destroy();
-            return false;
-        }
-
-        return true;
-    });
-
-    // ===========================
-    // 羽
-    // ===========================
-
-    feathers.forEach(feather => {
-
-        feather.x -= obstacleSpeed;
-
-        if(
-
-            Phaser.Geom.Intersects.RectangleToRectangle(
-
-                player.getBounds(),
-                feather.getBounds()
-            )
-        ){
-
-            score += 100;
-
-            feather.destroy();
-
-            feathers =
-                feathers.filter(
-                    f => f !== feather
-                );
         }
     });
 
-    // 画面外削除
-
-    feathers = feathers.filter(feather => {
-
-        if(feather.x < -50){
-
-            feather.destroy();
-            return false;
-        }
-
-        return true;
-    });
-
-    // ===========================
     // スコア
-    // ===========================
 
-    score += 0.03;
+    score += 0.05;
 
-    if(Math.floor(score) !== lastScore){
+    scoreText.setText(
+        "SCORE : " + Math.floor(score)
+    );
 
-        lastScore = Math.floor(score);
-
-        scoreText.setText(
-            "SCORE : " + lastScore
-        );
-
-        bestText.setText(
-            "BEST : " + bestScore
-        );
-    }
+    bestText.setText(
+        "BEST : " + bestScore
+    );
 }
 
-// ===============================
-// 障害物生成
-// ===============================
+// =====================
+// 障害物
+// =====================
 
 function spawnObstacle(scene){
 
-    let types = [
-        "cactus",
-        "rock",
-        "drone"
-    ];
-
-    let type = Phaser.Utils.Array.GetRandom(
-        types
+    let obstacle = scene.add.image(
+        420,
+        groundY + 5,
+        "cactus"
     );
 
-    let obstacle;
-
-    if(type === "cactus"){
-
-        obstacle = scene.add.image(
-            420,
-            groundY - 20,
-            "cactus"
-        );
-
-        obstacle.displayWidth = 60;
-        obstacle.displayHeight = 70;
-    }
-
-    else if(type === "rock"){
-
-        obstacle = scene.add.image(
-            420,
-            groundY - 15,
-            "rock"
-        );
-
-        obstacle.displayWidth = 70;
-        obstacle.displayHeight = 55;
-    }
-
-    else{
-
-        obstacle = scene.add.image(
-            420,
-            groundY - 120,
-            "drone"
-        );
-
-        obstacle.displayWidth = 70;
-        obstacle.displayHeight = 50;
-    }
+    obstacle.setScale(0.18);
 
     obstacle.passed = false;
 
     obstacles.push(obstacle);
-}
-
-// ===============================
-// 羽生成
-// ===============================
-
-function spawnFeather(scene){
-
-    let feather = scene.add.image(
-
-        420,
-
-        Phaser.Math.Between(
-            220,
-            420
-        ),
-
-        "feather"
-    );
-
-    feather.displayWidth = 40;
-    feather.displayHeight = 40;
-
-    feathers.push(feather);
 }
