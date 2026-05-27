@@ -1,17 +1,18 @@
+// ===============================
+// SUMIKICHI RUN WEB
+// 完全版 game.js
+// ===============================
+
 const config = {
 
-    type: Phaser.CANVAS,
+    type: Phaser.AUTO,
 
-    width: 360,
-    height: 640,
+    width: 720,
+    height: 1280,
 
     backgroundColor: "#f5ebd8",
 
-    scale: {
-
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    },
+    parent: "game-container",
 
     scene: {
         preload,
@@ -22,217 +23,371 @@ const config = {
 
 new Phaser.Game(config);
 
-// =====================
+// ===============================
 // グローバル
-// =====================
+// ===============================
 
 let player;
+let playerFrames = [];
 
-let velocityY = 0;
+let currentFrame = 0;
 
-let gravity = 0.22;
+let playerVelocityY = 0;
+
+// ===============================
+// ふわふわ設定
+// ===============================
+
+let gravity = 0.28;
 
 let jumpCount = 0;
 
-let groundY = 560;
+let groundY = 1110;
 
 let obstacles = [];
+let feathers = [];
 
 let score = 0;
-
 let bestScore = 0;
 
-let scoreText;
-let bestText;
+let combo = 0;
 
 let gameStarted = false;
 let gameOver = false;
 
+let scoreText;
+let bestText;
+
+let titleTexts = [];
+
+let guideImage;
+
+let animationTimer = 0;
+
 let isNight = false;
 
-// =====================
+// ===============================
 // preload
-// =====================
+// ===============================
 
 function preload() {
 
-    this.load.image("sumikichi", "sumikichi_1.png");
+    this.load.image(
+        "sumikichi1",
+        " sumikichi_1.png"
+    );
 
-    this.load.image("cactus", "cactus.png");
+    this.load.image(
+        "sumikichi2",
+        " sumikichi_2.png"
+    );
 
-    this.load.image("guide", "guide.png");
+    this.load.image(
+        "cactus",
+        " cactus.png"
+    );
+
+    this.load.image(
+        "rock",
+        " rock.png"
+    );
+
+    this.load.image(
+        "drone",
+        " drone.png"
+    );
+
+    this.load.image(
+        "feather",
+        " feather.png"
+    );
+
+    this.load.image(
+        "guide",
+        " guide.png"
+    );
 }
 
-// =====================
+// ===============================
 // create
-// =====================
+// ===============================
 
 function create() {
 
-    // ベストスコア
+    // ===========================
+    // BEST SCORE
+    // ===========================
 
-    const saved =
-        localStorage.getItem("sumikichi_best");
+    const saved = localStorage.getItem(
+        "sumikichi_best"
+    );
 
     if(saved){
 
         bestScore = parseInt(saved);
     }
 
+    // ===========================
     // 背景
+    // ===========================
 
     this.sky = this.add.rectangle(
-        180,
-        320,
         360,
         640,
+        720,
+        1280,
         0xf5ebd8
     );
 
+    // ===========================
     // 月
+    // ===========================
 
     this.moon = this.add.circle(
-        300,
-        120,
-        30,
+        600,
+        180,
+        60,
         0xfff0aa
     );
 
     this.moon.visible = false;
 
+    // ===========================
+    // 雲
+    // ===========================
+
+    this.clouds = [];
+
+    for(let i = 0; i < 4; i++){
+
+        let cloud = this.add.ellipse(
+            200 + i * 220,
+            170 + i * 20,
+            180,
+            90,
+            0xffffff
+        );
+
+        this.clouds.push(cloud);
+    }
+
+    // ===========================
     // 地面
+    // ===========================
 
     this.ground = this.add.rectangle(
-        180,
-        610,
         360,
-        60,
+        1210,
+        720,
+        220,
         0x7a4f28
     );
 
-    // タイトル
+    // ===========================
+    // 地面ライン
+    // ===========================
 
-    this.title = this.add.text(
+    this.groundLines = [];
 
-        40,
-        70,
+    for(let i = 0; i < 20; i++){
 
-        "すみきち\nぱたぱたラン！",
+        let line = this.add.rectangle(
 
-        {
-            fontSize: "34px",
-            color: "#222",
-            align: "center"
-        }
+            i * 80,
+            1170,
+
+            40,
+            8,
+
+            0x503010
+        );
+
+        this.groundLines.push(line);
+    }
+
+    // ===========================
+    // ガイド画像
+    // ===========================
+
+    guideImage = this.add.image(
+        360,
+        760,
+        "guide"
     );
 
-    this.startText = this.add.text(
+    guideImage.displayWidth = 520;
+    guideImage.displayHeight = 520;
 
-        60,
-        180,
+    // ===========================
+    // タイトル
+    // ===========================
 
-        "タップしてスタート！",
+    let title = this.add.text(
+
+        70,
+        55,
+
+        "すみきち ぱたぱたラン！",
 
         {
-            fontSize: "28px",
+            fontSize: "50px",
             color: "#222"
         }
     );
 
-    // ガイド
+    let startText = this.add.text(
 
-    this.guide = this.add.image(
-        180,
-        360,
-        "guide"
+        150,
+        240,
+
+        "タップしてスタート！",
+
+        {
+            fontSize: "44px",
+            color: "#222"
+        }
     );
 
-    this.guide.setScale(0.35);
+    titleTexts.push(title);
+    titleTexts.push(startText);
 
+    // ===========================
     // プレイヤー
+    // ===========================
 
-    player = this.add.image(
-        80,
-        groundY,
-        "sumikichi"
-    );
+    playerFrames = [
 
-    player.setScale(0.22);
+        this.add.image(
+            120,
+            groundY - 40,
+            "sumikichi1"
+        ),
 
+        this.add.image(
+            120,
+            groundY - 40,
+            "sumikichi2"
+        )
+    ];
+
+    playerFrames.forEach(frame => {
+
+        frame.displayWidth = 140;
+        frame.displayHeight = 140;
+
+        frame.visible = false;
+    });
+
+    player = playerFrames[0];
+
+    player.visible = true;
+
+    // ===========================
     // SCORE
+    // ===========================
 
     scoreText = this.add.text(
 
-        12,
-        10,
+        30,
+        30,
 
         "SCORE : 0",
 
         {
-            fontSize: "22px",
+            fontSize: "48px",
             color: "#222"
         }
     );
 
     bestText = this.add.text(
 
-        12,
-        40,
+        30,
+        90,
 
         "BEST : " + bestScore,
 
         {
-            fontSize: "18px",
+            fontSize: "36px",
             color: "#222"
         }
     );
 
+    // タイトル中は非表示
+
     scoreText.visible = false;
     bestText.visible = false;
 
+    // ===========================
     // タップ
+    // ===========================
 
-    this.input.on("pointerdown", () => {
+    this.input.on(
 
-        // START
+        "pointerdown",
 
-        if(!gameStarted){
+        () => {
 
-            gameStarted = true;
+            // START
 
-            this.title.visible = false;
-            this.startText.visible = false;
-            this.guide.visible = false;
+            if(!gameStarted){
 
-            scoreText.visible = true;
-            bestText.visible = true;
+                gameStarted = true;
 
-            return;
+                guideImage.visible = false;
+
+                titleTexts.forEach(t => {
+                    t.visible = false;
+                });
+
+                scoreText.visible = true;
+                bestText.visible = true;
+
+                return;
+            }
+
+            // RETRY
+
+            if(gameOver){
+
+                location.reload();
+                return;
+            }
+
+            // JUMP
+
+            if(jumpCount < 3){
+
+                // ===================
+                // ふわふわジャンプ
+                // ===================
+
+                if(jumpCount === 0){
+
+                    playerVelocityY = -14;
+                }
+
+                else if(jumpCount === 1){
+
+                    playerVelocityY = -18;
+                }
+
+                else{
+
+                    playerVelocityY = -15;
+                }
+
+                jumpCount++;
+            }
         }
+    );
 
-        // RETRY
-
-        if(gameOver){
-
-            location.reload();
-            return;
-        }
-
-        // JUMP
-
-        if(jumpCount < 2){
-
-            velocityY = -8.5;
-
-            jumpCount++;
-        }
-    });
-
+    // ===========================
     // 障害物生成
+    // ===========================
 
     this.time.addEvent({
 
-        delay: 2200,
+        delay: 2600,
 
         loop: true,
 
@@ -245,21 +400,43 @@ function create() {
             spawnObstacle(this);
         }
     });
+
+    // ===========================
+    // 羽生成
+    // ===========================
+
+    this.time.addEvent({
+
+        delay: 3500,
+
+        loop: true,
+
+        callback: () => {
+
+            if(!gameStarted || gameOver){
+                return;
+            }
+
+            spawnFeather(this);
+        }
+    });
 }
 
-// =====================
+// ===============================
 // update
-// =====================
+// ===============================
 
-function update() {
+function update(time, delta) {
 
     if(!gameStarted || gameOver){
         return;
     }
 
+    // ===========================
     // 昼夜切替
+    // ===========================
 
-    if(Math.floor(score / 800) % 2 === 0){
+    if(Math.floor(score / 1500) % 2 === 0){
 
         isNight = false;
 
@@ -267,9 +444,12 @@ function update() {
 
         this.moon.visible = false;
 
+        // 昼文字
+
         scoreText.setColor("#222");
         bestText.setColor("#222");
     }
+
     else{
 
         isNight = true;
@@ -278,45 +458,120 @@ function update() {
 
         this.moon.visible = true;
 
-        scoreText.setColor("#fff");
-        bestText.setColor("#fff");
+        // 夜文字
+
+        scoreText.setColor("#ffffff");
+        bestText.setColor("#ffffff");
     }
 
-    // スピード
+    // ===========================
+    // 全体スピード
+    // ===========================
 
-    let speed = 2.8;
+    let obstacleSpeed =
+        3 + score * 0.0008;
 
+    // ===========================
+    // 雲
+    // ===========================
+
+    this.clouds.forEach(cloud => {
+
+        cloud.x -= obstacleSpeed * 0.2;
+
+        if(cloud.x < -120){
+
+            cloud.x = 820;
+        }
+    });
+
+    // ===========================
+    // 地面ライン
+    // ===========================
+
+    this.groundLines.forEach(line => {
+
+        line.x -= obstacleSpeed * 2;
+
+        if(line.x < -40){
+
+            line.x = 760;
+        }
+    });
+
+    // ===========================
     // 重力
+    // ===========================
 
-    velocityY += gravity;
+    playerVelocityY += gravity;
 
-    player.y += velocityY;
+    player.y += playerVelocityY;
 
-    if(player.y >= groundY){
+    if(player.y >= groundY - 40){
 
-        player.y = groundY;
+        player.y = groundY - 40;
 
-        velocityY = 0;
+        playerVelocityY = 0;
 
         jumpCount = 0;
     }
 
+    // ===========================
+    // パタパタ
+    // ===========================
+
+    animationTimer += delta;
+
+    if(animationTimer > 150){
+
+        player.visible = false;
+
+        currentFrame++;
+
+        if(currentFrame >= playerFrames.length){
+
+            currentFrame = 0;
+        }
+
+        player = playerFrames[currentFrame];
+
+        player.visible = true;
+
+        animationTimer = 0;
+    }
+
+    playerFrames.forEach(frame => {
+
+        frame.x = 120;
+        frame.y = player.y;
+    });
+
+    // ===========================
     // 障害物
+    // ===========================
 
     obstacles.forEach(obstacle => {
 
-        obstacle.x -= speed;
+        obstacle.x -= obstacleSpeed;
 
-        // スコア
+        // ニアミス
 
-        if(!obstacle.passed && obstacle.x < 80){
+        if(
+            !obstacle.passed
+            &&
+            obstacle.x < 170
+        ){
 
             obstacle.passed = true;
 
-            score += 100;
+            combo++;
+
+            score += 50 * combo;
+
+            showCombo(this);
         }
 
-        // 当たり
+        // 当たり判定
 
         if(
 
@@ -329,11 +584,14 @@ function update() {
 
             gameOver = true;
 
+            combo = 0;
+
             if(score > bestScore){
 
-                bestScore = score;
+                bestScore = Math.floor(score);
 
                 localStorage.setItem(
+
                     "sumikichi_best",
                     bestScore
                 );
@@ -341,40 +599,63 @@ function update() {
 
             this.add.text(
 
-                40,
-                260,
+                120,
+                550,
 
                 "GAME OVER",
 
                 {
-                    fontSize: "42px",
+                    fontSize: "72px",
                     color: "#ff0000"
                 }
             );
 
             this.add.text(
 
-                60,
-                320,
+                150,
+                650,
 
                 "TAP TO RETRY",
 
                 {
-                    fontSize: "26px",
+                    fontSize: "48px",
                     color: "#ffffff"
                 }
             );
         }
+    });
 
-        // 画面外削除
+    // ===========================
+    // 羽
+    // ===========================
 
-        if(obstacle.x < -100){
+    feathers.forEach(feather => {
 
-            obstacle.destroy();
+        feather.x -= obstacleSpeed;
+
+        if(
+
+            Phaser.Geom.Intersects.RectangleToRectangle(
+
+                player.getBounds(),
+                feather.getBounds()
+            )
+        ){
+
+            score += 100;
+
+            feather.destroy();
+
+            feathers =
+                feathers.filter(
+                    f => f !== feather
+                );
         }
     });
 
+    // ===========================
     // スコア
+    // ===========================
 
     score += 0.05;
 
@@ -387,21 +668,125 @@ function update() {
     );
 }
 
-// =====================
-// 障害物
-// =====================
+// ===============================
+// 障害物生成
+// ===============================
 
 function spawnObstacle(scene){
 
-    let obstacle = scene.add.image(
-        420,
-        groundY + 5,
-        "cactus"
+    let types = [
+        "cactus",
+        "rock",
+        "drone"
+    ];
+
+    let type = Phaser.Utils.Array.GetRandom(
+        types
     );
 
-    obstacle.setScale(0.18);
+    let obstacle;
+
+    if(type === "cactus"){
+
+        obstacle = scene.add.image(
+            820,
+            groundY - 45,
+            "cactus"
+        );
+
+        obstacle.displayWidth = 120;
+        obstacle.displayHeight = 140;
+    }
+
+    else if(type === "rock"){
+
+        obstacle = scene.add.image(
+            820,
+            groundY - 35,
+            "rock"
+        );
+
+        obstacle.displayWidth = 140;
+        obstacle.displayHeight = 120;
+    }
+
+    else{
+
+        obstacle = scene.add.image(
+            820,
+            groundY - 240,
+            "drone"
+        );
+
+        obstacle.displayWidth = 140;
+        obstacle.displayHeight = 100;
+    }
 
     obstacle.passed = false;
 
     obstacles.push(obstacle);
+}
+
+// ===============================
+// 羽生成
+// ===============================
+
+function spawnFeather(scene){
+
+    let feather = scene.add.image(
+
+        820,
+
+        Phaser.Math.Between(
+            500,
+            850
+        ),
+
+        "feather"
+    );
+
+    feather.displayWidth = 80;
+    feather.displayHeight = 80;
+
+    feathers.push(feather);
+}
+
+// ===============================
+// COMBO表示
+// ===============================
+
+function showCombo(scene){
+
+    if(combo < 2){
+        return;
+    }
+
+    let comboText = scene.add.text(
+
+        240,
+        260,
+
+        "COMBO x" + combo,
+
+        {
+            fontSize: "42px",
+            color: "#ffcc00"
+        }
+    );
+
+    scene.tweens.add({
+
+        targets: comboText,
+
+        y: 200,
+
+        alpha: 0,
+
+        duration: 800,
+
+        onComplete: () => {
+
+            comboText.destroy();
+        }
+    });
 }
