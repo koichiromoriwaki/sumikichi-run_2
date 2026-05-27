@@ -5,14 +5,21 @@
 
 const config = {
 
-    type: Phaser.AUTO,
+    type: Phaser.CANVAS,
 
-    width: 720,
-    height: 1280,
+    width: 360,
+    height: 640,
 
     backgroundColor: "#f5ebd8",
 
     parent: "game-container",
+
+    scale: {
+
+        mode: Phaser.Scale.FIT,
+
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
 
     scene: {
         preload,
