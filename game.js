@@ -1,18 +1,21 @@
 // ===============================
 // SUMIKICHI RUN WEB
-// 完全版 game.js
+// 軽量化版 game.js
 // ===============================
 
 const config = {
 
-    type: Phaser.CANVAS,
+    type: Phaser.WEBGL,
 
     width: 360,
     height: 640,
 
     backgroundColor: "#f5ebd8",
 
-    parent: "game-container",
+    fps: {
+        target: 30,
+        forceSetTimeOut: true
+    },
 
     scale: {
 
@@ -41,15 +44,11 @@ let currentFrame = 0;
 
 let playerVelocityY = 0;
 
-// ===============================
-// ふわふわ設定
-// ===============================
-
-let gravity = 0.28;
+let gravity = 0.20;
 
 let jumpCount = 0;
 
-let groundY = 1110;
+let groundY = 560;
 
 let obstacles = [];
 let feathers = [];
@@ -57,13 +56,13 @@ let feathers = [];
 let score = 0;
 let bestScore = 0;
 
-let combo = 0;
-
 let gameStarted = false;
 let gameOver = false;
 
 let scoreText;
 let bestText;
+
+let lastScore = -1;
 
 let titleTexts = [];
 
@@ -79,39 +78,41 @@ let isNight = false;
 
 function preload() {
 
+    // 先頭スペース絶対禁止
+
     this.load.image(
         "sumikichi1",
-        " sumikichi_1.png"
+        "sumikichi_1.png"
     );
 
     this.load.image(
         "sumikichi2",
-        " sumikichi_2.png"
+        "sumikichi_2.png"
     );
 
     this.load.image(
         "cactus",
-        " cactus.png"
+        "cactus.png"
     );
 
     this.load.image(
         "rock",
-        " rock.png"
+        "rock.png"
     );
 
     this.load.image(
         "drone",
-        " drone.png"
+        "drone.png"
     );
 
     this.load.image(
         "feather",
-        " feather.png"
+        "feather.png"
     );
 
     this.load.image(
         "guide",
-        " guide.png"
+        "guide.png"
     );
 }
 
@@ -139,10 +140,10 @@ function create() {
     // ===========================
 
     this.sky = this.add.rectangle(
+        180,
+        320,
         360,
         640,
-        720,
-        1280,
         0xf5ebd8
     );
 
@@ -151,9 +152,9 @@ function create() {
     // ===========================
 
     this.moon = this.add.circle(
-        600,
-        180,
-        60,
+        300,
+        100,
+        30,
         0xfff0aa
     );
 
@@ -165,13 +166,13 @@ function create() {
 
     this.clouds = [];
 
-    for(let i = 0; i < 4; i++){
+    for(let i = 0; i < 2; i++){
 
         let cloud = this.add.ellipse(
-            200 + i * 220,
-            170 + i * 20,
-            180,
+            120 + i * 180,
+            100 + i * 20,
             90,
+            45,
             0xffffff
         );
 
@@ -183,10 +184,10 @@ function create() {
     // ===========================
 
     this.ground = this.add.rectangle(
+        180,
+        610,
         360,
-        1210,
-        720,
-        220,
+        80,
         0x7a4f28
     );
 
@@ -196,15 +197,15 @@ function create() {
 
     this.groundLines = [];
 
-    for(let i = 0; i < 20; i++){
+    for(let i = 0; i < 8; i++){
 
         let line = this.add.rectangle(
 
-            i * 80,
-            1170,
+            i * 50,
+            585,
 
-            40,
-            8,
+            20,
+            4,
 
             0x503010
         );
@@ -213,17 +214,17 @@ function create() {
     }
 
     // ===========================
-    // ガイド画像
+    // ガイド
     // ===========================
 
     guideImage = this.add.image(
+        180,
         360,
-        760,
         "guide"
     );
 
-    guideImage.displayWidth = 520;
-    guideImage.displayHeight = 520;
+    guideImage.displayWidth = 220;
+    guideImage.displayHeight = 220;
 
     // ===========================
     // タイトル
@@ -231,26 +232,27 @@ function create() {
 
     let title = this.add.text(
 
-        70,
-        55,
+        30,
+        30,
 
-        "すみきち ぱたぱたラン！",
+        "すみきち\nぱたぱたラン！",
 
         {
-            fontSize: "50px",
-            color: "#222"
+            fontSize: "28px",
+            color: "#222",
+            align: "center"
         }
     );
 
     let startText = this.add.text(
 
-        150,
-        240,
+        70,
+        170,
 
         "タップしてスタート！",
 
         {
-            fontSize: "44px",
+            fontSize: "24px",
             color: "#222"
         }
     );
@@ -265,22 +267,22 @@ function create() {
     playerFrames = [
 
         this.add.image(
-            120,
-            groundY - 40,
+            70,
+            groundY - 20,
             "sumikichi1"
         ),
 
         this.add.image(
-            120,
-            groundY - 40,
+            70,
+            groundY - 20,
             "sumikichi2"
         )
     ];
 
     playerFrames.forEach(frame => {
 
-        frame.displayWidth = 140;
-        frame.displayHeight = 140;
+        frame.displayWidth = 70;
+        frame.displayHeight = 70;
 
         frame.visible = false;
     });
@@ -295,31 +297,29 @@ function create() {
 
     scoreText = this.add.text(
 
-        30,
-        30,
+        10,
+        10,
 
         "SCORE : 0",
 
         {
-            fontSize: "48px",
+            fontSize: "22px",
             color: "#222"
         }
     );
 
     bestText = this.add.text(
 
-        30,
-        90,
+        10,
+        40,
 
         "BEST : " + bestScore,
 
         {
-            fontSize: "36px",
+            fontSize: "18px",
             color: "#222"
         }
     );
-
-    // タイトル中は非表示
 
     scoreText.visible = false;
     bestText.visible = false;
@@ -364,23 +364,19 @@ function create() {
 
             if(jumpCount < 3){
 
-                // ===================
-                // ふわふわジャンプ
-                // ===================
-
                 if(jumpCount === 0){
 
-                    playerVelocityY = -14;
+                    playerVelocityY = -9;
                 }
 
                 else if(jumpCount === 1){
 
-                    playerVelocityY = -18;
+                    playerVelocityY = -11;
                 }
 
                 else{
 
-                    playerVelocityY = -15;
+                    playerVelocityY = -9;
                 }
 
                 jumpCount++;
@@ -394,7 +390,7 @@ function create() {
 
     this.time.addEvent({
 
-        delay: 2600,
+        delay: 2800,
 
         loop: true,
 
@@ -414,7 +410,7 @@ function create() {
 
     this.time.addEvent({
 
-        delay: 3500,
+        delay: 4000,
 
         loop: true,
 
@@ -440,18 +436,16 @@ function update(time, delta) {
     }
 
     // ===========================
-    // 昼夜切替
+    // 昼夜
     // ===========================
 
-    if(Math.floor(score / 1500) % 2 === 0){
+    if(Math.floor(score / 1000) % 2 === 0){
 
         isNight = false;
 
         this.sky.fillColor = 0xf5ebd8;
 
         this.moon.visible = false;
-
-        // 昼文字
 
         scoreText.setColor("#222");
         bestText.setColor("#222");
@@ -465,18 +459,16 @@ function update(time, delta) {
 
         this.moon.visible = true;
 
-        // 夜文字
-
         scoreText.setColor("#ffffff");
         bestText.setColor("#ffffff");
     }
 
     // ===========================
-    // 全体スピード
+    // スピード
     // ===========================
 
     let obstacleSpeed =
-        3 + score * 0.0008;
+        2 + score * 0.0003;
 
     // ===========================
     // 雲
@@ -484,11 +476,11 @@ function update(time, delta) {
 
     this.clouds.forEach(cloud => {
 
-        cloud.x -= obstacleSpeed * 0.2;
+        cloud.x -= obstacleSpeed * 0.1;
 
-        if(cloud.x < -120){
+        if(cloud.x < -60){
 
-            cloud.x = 820;
+            cloud.x = 420;
         }
     });
 
@@ -498,11 +490,11 @@ function update(time, delta) {
 
     this.groundLines.forEach(line => {
 
-        line.x -= obstacleSpeed * 2;
+        line.x -= obstacleSpeed * 1.5;
 
-        if(line.x < -40){
+        if(line.x < -20){
 
-            line.x = 760;
+            line.x = 400;
         }
     });
 
@@ -514,9 +506,9 @@ function update(time, delta) {
 
     player.y += playerVelocityY;
 
-    if(player.y >= groundY - 40){
+    if(player.y >= groundY - 20){
 
-        player.y = groundY - 40;
+        player.y = groundY - 20;
 
         playerVelocityY = 0;
 
@@ -529,7 +521,7 @@ function update(time, delta) {
 
     animationTimer += delta;
 
-    if(animationTimer > 150){
+    if(animationTimer > 180){
 
         player.visible = false;
 
@@ -549,7 +541,7 @@ function update(time, delta) {
 
     playerFrames.forEach(frame => {
 
-        frame.x = 120;
+        frame.x = 70;
         frame.y = player.y;
     });
 
@@ -560,23 +552,6 @@ function update(time, delta) {
     obstacles.forEach(obstacle => {
 
         obstacle.x -= obstacleSpeed;
-
-        // ニアミス
-
-        if(
-            !obstacle.passed
-            &&
-            obstacle.x < 170
-        ){
-
-            obstacle.passed = true;
-
-            combo++;
-
-            score += 50 * combo;
-
-            showCombo(this);
-        }
 
         // 当たり判定
 
@@ -591,14 +566,11 @@ function update(time, delta) {
 
             gameOver = true;
 
-            combo = 0;
-
             if(score > bestScore){
 
                 bestScore = Math.floor(score);
 
                 localStorage.setItem(
-
                     "sumikichi_best",
                     bestScore
                 );
@@ -606,30 +578,43 @@ function update(time, delta) {
 
             this.add.text(
 
-                120,
-                550,
+                60,
+                260,
 
                 "GAME OVER",
 
                 {
-                    fontSize: "72px",
+                    fontSize: "32px",
                     color: "#ff0000"
                 }
             );
 
             this.add.text(
 
-                150,
-                650,
+                70,
+                320,
 
                 "TAP TO RETRY",
 
                 {
-                    fontSize: "48px",
+                    fontSize: "22px",
                     color: "#ffffff"
                 }
             );
         }
+    });
+
+    // 画面外削除
+
+    obstacles = obstacles.filter(obstacle => {
+
+        if(obstacle.x < -100){
+
+            obstacle.destroy();
+            return false;
+        }
+
+        return true;
     });
 
     // ===========================
@@ -660,19 +645,37 @@ function update(time, delta) {
         }
     });
 
+    // 画面外削除
+
+    feathers = feathers.filter(feather => {
+
+        if(feather.x < -50){
+
+            feather.destroy();
+            return false;
+        }
+
+        return true;
+    });
+
     // ===========================
     // スコア
     // ===========================
 
-    score += 0.05;
+    score += 0.03;
 
-    scoreText.setText(
-        "SCORE : " + Math.floor(score)
-    );
+    if(Math.floor(score) !== lastScore){
 
-    bestText.setText(
-        "BEST : " + bestScore
-    );
+        lastScore = Math.floor(score);
+
+        scoreText.setText(
+            "SCORE : " + lastScore
+        );
+
+        bestText.setText(
+            "BEST : " + bestScore
+        );
+    }
 }
 
 // ===============================
@@ -696,37 +699,37 @@ function spawnObstacle(scene){
     if(type === "cactus"){
 
         obstacle = scene.add.image(
-            820,
-            groundY - 45,
+            420,
+            groundY - 20,
             "cactus"
         );
 
-        obstacle.displayWidth = 120;
-        obstacle.displayHeight = 140;
+        obstacle.displayWidth = 60;
+        obstacle.displayHeight = 70;
     }
 
     else if(type === "rock"){
 
         obstacle = scene.add.image(
-            820,
-            groundY - 35,
+            420,
+            groundY - 15,
             "rock"
         );
 
-        obstacle.displayWidth = 140;
-        obstacle.displayHeight = 120;
+        obstacle.displayWidth = 70;
+        obstacle.displayHeight = 55;
     }
 
     else{
 
         obstacle = scene.add.image(
-            820,
-            groundY - 240,
+            420,
+            groundY - 120,
             "drone"
         );
 
-        obstacle.displayWidth = 140;
-        obstacle.displayHeight = 100;
+        obstacle.displayWidth = 70;
+        obstacle.displayHeight = 50;
     }
 
     obstacle.passed = false;
@@ -742,58 +745,18 @@ function spawnFeather(scene){
 
     let feather = scene.add.image(
 
-        820,
+        420,
 
         Phaser.Math.Between(
-            500,
-            850
+            220,
+            420
         ),
 
         "feather"
     );
 
-    feather.displayWidth = 80;
-    feather.displayHeight = 80;
+    feather.displayWidth = 40;
+    feather.displayHeight = 40;
 
     feathers.push(feather);
-}
-
-// ===============================
-// COMBO表示
-// ===============================
-
-function showCombo(scene){
-
-    if(combo < 2){
-        return;
-    }
-
-    let comboText = scene.add.text(
-
-        240,
-        260,
-
-        "COMBO x" + combo,
-
-        {
-            fontSize: "42px",
-            color: "#ffcc00"
-        }
-    );
-
-    scene.tweens.add({
-
-        targets: comboText,
-
-        y: 200,
-
-        alpha: 0,
-
-        duration: 800,
-
-        onComplete: () => {
-
-            comboText.destroy();
-        }
-    });
 }
